@@ -1,0 +1,6 @@
+{
+  "base_url": "http://192.168.10.60:8080/v1",
+  "model": "local-coder",
+  "workspace_root": "C:\\workspace",
+  "note": "Runtime configuration is read from environment variables; do not store API keys in this file."
+}
