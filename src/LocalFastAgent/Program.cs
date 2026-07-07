@@ -128,7 +128,7 @@ sealed class LocalFastAgent
         var focus = GetString(args, "focus") ?? "主要エラー、根本原因候補、次に確認すべきこと";
         var source = GetString(args, "log_text") ?? ReadWorkspaceFile(GetString(args, "log_path") ?? throw new McpException(-32602, "log_path or log_text is required."), _config.MaxLogBytes, tailPreferred: true);
         var compressed = CompressLog(_masker.Mask(source), _config.MaxPromptChars);
-        return await CachedLlmAsync("local_summarize_logs", focus + compressed, "あなたはログ解析エージェントです。ログ全文を返さず、日本語Markdownで主要エラー、根本原因候補、関連ファイル、次にCodexが確認すべきこと、無視してよいノイズを簡潔に返してください。", $"focus: {focus}\n\nログ抜粋:\n{compressed}");
+        return await CachedLlmAsync("local_summarize_logs", focus + compressed, "あなたはログ解析エージェントです。ログ全文を返さず、日本語Markdownで主要エラー、根本原因候補、関連ファイル、次にAIエージェントが確認すべきこと、無視してよいノイズを簡潔に返してください。", $"focus: {focus}\n\nログ抜粋:\n{compressed}");
     }
 
     private async Task<string> CodeMapAsync(JsonElement args)
@@ -140,7 +140,7 @@ sealed class LocalFastAgent
         var terms = Regex.Matches(question.ToLowerInvariant(), "[a-z0-9_]{3,}|[一-龯ぁ-んァ-ン]{2,}").Select(m => m.Value).Distinct().ToArray();
         var snippets = files.Select(path => ScoreAndSnippet(path, terms)).Where(x => x.Score > 0 || snippetsCount(files) < 20).OrderByDescending(x => x.Score).Take(30).Select(x => x.Snippet);
         var body = string.Join("\n\n---\n", snippets).Limit(_config.MaxPromptChars);
-        return await CachedLlmAsync("local_code_map", question + body, "あなたはコード調査エージェントです。ソース全文を返さず、日本語Markdownで関連度が高いファイル、主要シンボル、推定処理経路、変更候補、Codexが次に読むべき箇所を返してください。推測と確認済みを分けてください。", $"質問: {question}\n\n候補抜粋:\n{_masker.Mask(body)}");
+        return await CachedLlmAsync("local_code_map", question + body, "あなたはコード調査エージェントです。ソース全文を返さず、日本語Markdownで関連度が高いファイル、主要シンボル、推定処理経路、変更候補、AIエージェントが次に読むべき箇所を返してください。推測と確認済みを分けてください。", $"質問: {question}\n\n候補抜粋:\n{_masker.Mask(body)}");
         static int snippetsCount<T>(IEnumerable<T> _) => 0;
     }
 
@@ -149,7 +149,7 @@ sealed class LocalFastAgent
         var focus = GetString(args, "focus") ?? "bug risk, exception handling, security";
         var source = GetString(args, "diff_text") ?? ReadWorkspaceFile(GetString(args, "diff_path") ?? throw new McpException(-32602, "diff_path or diff_text is required."), _config.MaxDiffBytes, tailPreferred: false);
         var diff = FilterDiff(_masker.Mask(source)).Limit(_config.MaxPromptChars);
-        return await CachedLlmAsync("local_review_diff", focus + diff, "あなたはdiff一次レビュー担当です。stylisticな指摘は避け、実害のある高/中リスク、テスト不足、Codexが最終確認すべき点だけを日本語Markdownで返してください。diff全文は返さないでください。", $"focus: {focus}\n\ndiff抜粋:\n{diff}");
+        return await CachedLlmAsync("local_review_diff", focus + diff, "あなたはdiff一次レビュー担当です。stylisticな指摘は避け、実害のある高/中リスク、テスト不足、AIエージェントが最終確認すべき点だけを日本語Markdownで返してください。diff全文は返さないでください。", $"focus: {focus}\n\ndiff抜粋:\n{diff}");
     }
 
     private async Task<string> CachedLlmAsync(string tool, string keyMaterial, string system, string user)
@@ -229,10 +229,10 @@ sealed record AgentConfig(string WorkspaceRoot, string BaseUrl, string Model, st
 {
     public static AgentConfig FromEnvironment() => new(
         Environment.GetEnvironmentVariable("WORKSPACE_ROOT") ?? Directory.GetCurrentDirectory(),
-        (Environment.GetEnvironmentVariable("JETSON_OPENAI_BASE_URL") ?? "http://192.168.10.60:8080/v1").TrimEnd('/'),
+        (Environment.GetEnvironmentVariable("LOCAL_OPENAI_BASE_URL") ?? "http://host.docker.internal:8080/v1").TrimEnd('/'),
         Environment.GetEnvironmentVariable("LOCAL_LLM_MODEL") ?? "local-coder",
-        Environment.GetEnvironmentVariable("JETSON_OPENAI_API_KEY"),
-        EnvInt("MAX_LOG_BYTES", 512_000), EnvInt("MAX_DIFF_BYTES", 512_000), EnvInt("MAX_FILE_BYTES", 256_000), EnvInt("MAX_PROMPT_CHARS", 60_000), EnvInt("MAX_CODE_MAP_FILES", 200), EnvInt("JETSON_REQUEST_TIMEOUT_SECONDS", 120));
+        Environment.GetEnvironmentVariable("LOCAL_OPENAI_API_KEY"),
+        EnvInt("MAX_LOG_BYTES", 512_000), EnvInt("MAX_DIFF_BYTES", 512_000), EnvInt("MAX_FILE_BYTES", 256_000), EnvInt("MAX_PROMPT_CHARS", 60_000), EnvInt("MAX_CODE_MAP_FILES", 200), EnvInt("LOCAL_REQUEST_TIMEOUT_SECONDS", 120));
     private static int EnvInt(string name, int fallback) => int.TryParse(Environment.GetEnvironmentVariable(name), out var v) ? v : fallback;
 }
 
@@ -253,10 +253,10 @@ sealed class OpenAiCompatibleClient(AgentConfig config)
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            return $"Jetson ThorのOpenAI互換APIに接続できませんでした。\n\n確認事項:\n1. Windowsホストから `{config.BaseUrl}/models` に接続できるか\n2. Windowsコンテナ内から同じURLに接続できるか\n3. Jetson側FirewallがWindowsホストを許可しているか\n4. APIキーが一致しているか\n\n詳細: {ex.GetType().Name}: {ex.Message}";
+            return $"組み込み・ローカル・エッジ機器のOpenAI互換APIに接続できませんでした。\n\n確認事項:\n1. Windowsホストから `{config.BaseUrl}/models` に接続できるか\n2. Windowsコンテナ内から同じURLに接続できるか\n3. ローカル推論機器側FirewallがWindowsホストを許可しているか\n4. APIキーが一致しているか\n\n詳細: {ex.GetType().Name}: {ex.Message}";
         }
     }
-    private static string Diagnostic(HttpStatusCode code, string body) => $"Jetson Thor APIがHTTP {(int)code}を返しました。4xxは設定/APIキー/モデル名、5xxは推論サーバー状態を確認してください。\n\n応答抜粋:\n{body.Limit(2000)}";
+    private static string Diagnostic(HttpStatusCode code, string body) => $"ローカル推論APIがHTTP {(int)code}を返しました。4xxは設定/APIキー/モデル名、5xxは推論サーバー状態を確認してください。\n\n応答抜粋:\n{body.Limit(2000)}";
 }
 
 sealed class SecretMasker
