@@ -1,6 +1,6 @@
 # LocalFastAgent
 
-LocalFastAgent is a thin C#/.NET MCP stdio server intended to run in a Hyper-V isolated Windows container and delegate first-pass log, code-map, and diff analysis to a embedded OpenAI-compatible API.
+LocalFastAgent is a thin C#/.NET MCP stdio server intended to run in a Hyper-V isolated Windows container and delegate first-pass log, code-map, and diff analysis to an embedded, local, edge, or dedicated OpenAI-compatible API.
 
 ## Tools
 
@@ -15,10 +15,10 @@ LocalFastAgent is read-only by design. It validates workspace paths, avoids know
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `WORKSPACE_ROOT` | current directory | Read-only repository root inside the container. |
-| `JETSON_OPENAI_BASE_URL` | `http://192.168.10.60:8080/v1` | OpenAI-compatible API base URL. |
-| `JETSON_OPENAI_API_KEY` | empty | Optional Bearer token. |
+| `LOCAL_OPENAI_BASE_URL` | `http://host.docker.internal:8080/v1` | OpenAI-compatible API base URL. |
+| `LOCAL_OPENAI_API_KEY` | empty | Optional Bearer token. |
 | `LOCAL_LLM_MODEL` | `local-coder` | Chat completions model name. |
-| `JETSON_REQUEST_TIMEOUT_SECONDS` | `120` | Request timeout. |
+| `LOCAL_REQUEST_TIMEOUT_SECONDS` | `120` | Request timeout. |
 | `MAX_LOG_BYTES` | `512000` | Maximum log bytes read. |
 | `MAX_DIFF_BYTES` | `512000` | Maximum diff bytes read. |
 | `MAX_FILE_BYTES` | `256000` | Maximum single file size for code-map snippets. |
@@ -49,9 +49,9 @@ docker build `
   -f Dockerfile .
 ```
 
-## Codex MCP configuration
+## AI agent MCP configuration
 
-Add the server to `%USERPROFILE%\.codex\config.toml`:
+Add the server to your MCP client configuration file. The same tools can be used from general AI agents, Vibe Coding workflows, Deep Research workflows, and other MCP-capable clients:
 
 ```toml
 [mcp_servers.localfastagent]
@@ -69,10 +69,4 @@ default_tools_approval_mode = "prompt"
 enabled_tools = ["local_summarize_logs", "local_code_map", "local_review_diff"]
 ```
 
-Keep `JETSON_OPENAI_API_KEY` in a user environment variable or Windows Credential Manager; do not store it in `config.toml`.
-
-## License
-
-LocalFastAgent is licensed under the [Apache License 2.0](LICENSE).
-
-Copyright and attribution notices must be retained when using, copying, or distributing this software. See [NOTICE](NOTICE) for the attribution notice.
+Keep `LOCAL_OPENAI_API_KEY` in a user environment variable or Windows Credential Manager; do not store it in `config.toml`.
