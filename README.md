@@ -70,3 +70,9 @@ enabled_tools = ["local_summarize_logs", "local_code_map", "local_review_diff"]
 ```
 
 Keep `JETSON_OPENAI_API_KEY` in a user environment variable or Windows Credential Manager; do not store it in `config.toml`.
+
+## License
+
+LocalFastAgent is licensed under the [Apache License 2.0](LICENSE).
+
+Copyright and attribution notices must be retained when using, copying, or distributing this software. See [NOTICE](NOTICE) for the attribution notice.
