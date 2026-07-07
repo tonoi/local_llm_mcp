@@ -1,6 +1,6 @@
 # LocalFastAgent
 
-LocalFastAgent is a thin C#/.NET MCP stdio server intended to run in a Hyper-V isolated Windows container and delegate first-pass log, code-map, and diff analysis to a Jetson Thor OpenAI-compatible API.
+LocalFastAgent is a thin C#/.NET MCP stdio server intended to run in a Hyper-V isolated Windows container and delegate first-pass log, code-map, and diff analysis to a embedded OpenAI-compatible API.
 
 ## Tools
 
